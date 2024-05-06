@@ -16,7 +16,6 @@ class Program
             return;
         }
 
-        // Updated file search pattern to only find files starting with 'SP_' and ending with '.sql'
         var sqlFiles = Directory.GetFiles(folderPath, "SP_*.sql", SearchOption.AllDirectories);
         List<string> csvLines = new List<string>
         {
@@ -46,50 +45,57 @@ class Program
 
     private static Dictionary<string, (HashSet<string> Tables, HashSet<string> Operations, int LineNumber)> ExtractStoredProcedures(string sql, string filePath)
     {
-        var regex = new Regex(@"CREATE\s+PROCEDURE\s+[\[\w]+\.\[\w]+\.\[(\w+)\]|CREATE\s+PROCEDURE\s+(\w+)", RegexOptions.IgnoreCase);
-        var tableRegex = new Regex(@"FROM\s+[\[\w]+\.\[\w]+\.\[(\w+)\]|FROM\s+(\w+)|JOIN\s+[\[\w]+\.\[\w]+\.\[(\w+)\]|JOIN\s+(\w+)", RegexOptions.IgnoreCase);
+        var procedureRegex = new Regex(@"CREATE\s+PROCEDURE\s+[\[\w]+\.\[\w]+\.\[(\w+)\]|CREATE\s+PROCEDURE\s+(\w+).*?AS(.*?)END", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        var tableRegex = new Regex(@"\bFROM\s+[\[\w]+\.\[\w]+\.\[(\w+)\]\b|\bFROM\s+(\w+)\b|\bJOIN\s+[\[\w]+\.\[\w]+\.\[(\w+)\]\b|\bJOIN\s+(\w+)\b", RegexOptions.IgnoreCase);
         var operationRegex = new Regex(@"\b(SELECT|INSERT|UPDATE|DELETE)\b", RegexOptions.IgnoreCase);
 
         var procedures = new Dictionary<string, (HashSet<string> Tables, HashSet<string> Operations, int LineNumber)>();
 
-        var lines = sql.Split('\n');
-        for (int i = 0; i < lines.Length; i++)
+        var matches = procedureRegex.Matches(sql);
+        foreach (Match match in matches)
         {
-            var matches = regex.Matches(lines[i]);
-            foreach (Match match in matches)
+            string procName = match.Groups[1].Value;
+            if (string.IsNullOrEmpty(procName))
             {
-                string procName = match.Groups[1].Value;
-                if (string.IsNullOrEmpty(procName))
-                {
-                    procName = match.Groups[2].Value;
-                }
+                procName = match.Groups[2].Value;
+            }
+            string procBody = match.Groups[3].Value;
+            int lineNumber = CountLines(sql.Substring(0, match.Index)) + 1; // Calculates the line number of the procedure's start
 
-                if (!procedures.ContainsKey(procName))
-                {
-                    procedures[procName] = (new HashSet<string>(), new HashSet<string>(), i + 1);
-                }
+            var tables = new HashSet<string>();
+            var operations = new HashSet<string>();
 
-                var tableMatches = tableRegex.Matches(sql);
-                foreach (Match tableMatch in tableMatches)
+            var tableMatches = tableRegex.Matches(procBody);
+            foreach (Match tableMatch in tableMatches)
+            {
+                for (int i = 1; i < tableMatch.Groups.Count; i++)
                 {
-                    for (int j = 1; j < tableMatch.Groups.Count; j++)
+                    if (!string.IsNullOrEmpty(tableMatch.Groups[i].Value))
                     {
-                        if (!string.IsNullOrEmpty(tableMatch.Groups[j].Value))
-                        {
-                            procedures[procName].Tables.Add(tableMatch.Groups[j].Value);
-                            break;
-                        }
+                        tables.Add(tableMatch.Groups[i].Value);
+                        break;
                     }
                 }
+            }
 
-                var operationMatches = operationRegex.Matches(sql);
-                foreach (Match opMatch in operationMatches)
-                {
-                    procedures[procName].Operations.Add(opMatch.Value.ToUpperInvariant());
-                }
+            var operationMatches = operationRegex.Matches(procBody);
+            foreach (Match opMatch in operationMatches)
+            {
+                operations.Add(opMatch.Value.ToUpperInvariant());
+            }
+
+            if (!procedures.ContainsKey(procName))
+            {
+                procedures[procName] = (tables, operations, lineNumber);
             }
         }
 
         return procedures;
+    }
+
+    // Helper method to count lines in a given text up to a certain position
+    private static int CountLines(string text)
+    {
+        return text.Count(c => c == '\n') + 1;
     }
 }
