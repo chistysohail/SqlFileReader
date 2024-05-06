@@ -16,7 +16,8 @@ class Program
             return;
         }
 
-        var sqlFiles = Directory.GetFiles(folderPath, "*.sql", SearchOption.AllDirectories);
+        // Updated file search pattern to only find files starting with 'SP_' and ending with '.sql'
+        var sqlFiles = Directory.GetFiles(folderPath, "SP_*.sql", SearchOption.AllDirectories);
         List<string> csvLines = new List<string>
         {
             "Sl. No.,File Path,File Name,Stored Procedure Name,Used Tables,Operations,Line Number"
