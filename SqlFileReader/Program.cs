@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Globalization;
 
-namespace SPReader
+namespace SqlCommandReader
 {
     class Program
     {
@@ -28,7 +28,7 @@ namespace SPReader
 
                 for (int i = 0; i < fileLines.Length; i++)
                 {
-                    if (Regex.IsMatch(fileLines[i], @"new SqlCommand\(@?""(\[?\w+\]?\.)?\[?(SP_[\w]+)\]?""\)"))
+                    if (Regex.IsMatch(fileLines[i], @"new SqlCommand\("))
                     {
                         string lineText = fileLines[i].Trim();
                         csvLines.Add($"{serialNumber++},{file},{i + 1},\"{lineText}\"");
@@ -37,7 +37,7 @@ namespace SPReader
             }
 
             string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-            string csvFilePath = Path.Combine(directoryPath, $"SPList_{timestamp}.csv");
+            string csvFilePath = Path.Combine(directoryPath, $"SqlCommandList_{timestamp}.csv");
             File.WriteAllLines(csvFilePath, csvLines);
 
             Console.WriteLine($"CSV file created at: {csvFilePath}");
