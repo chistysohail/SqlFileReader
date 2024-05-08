@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Globalization;
 
@@ -11,16 +10,12 @@ namespace SPReader
     {
         static void Main(string[] args)
         {
-            if (args.Length != 1)
-            {
-                Console.WriteLine("Please provide a directory path.");
-                return;
-            }
+            Console.WriteLine("Please enter the directory path:");
+            string directoryPath = Console.ReadLine();
 
-            string directoryPath = args[0];
-            if (!Directory.Exists(directoryPath))
+            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
             {
-                Console.WriteLine("The specified directory does not exist.");
+                Console.WriteLine("The specified directory does not exist or the path is invalid.");
                 return;
             }
 
